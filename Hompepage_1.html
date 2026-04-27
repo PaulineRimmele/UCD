@@ -1,0 +1,272 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lichterlino</title>
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  background: #0f172a;
+  color: white;
+  text-align: center;
+}
+
+/* HEADER */
+.header {
+  width: 100%;
+  padding: 20px 0;
+  background: #1f2937;
+}
+
+.header h1 {
+  font-size: 50px;
+}
+
+/* NAV CONTAINER */
+.nav-container {
+  position: relative;
+  margin: 30px auto 80px auto;
+  width: 85%;
+}
+
+/* NAV */
+nav ul {
+  list-style: none;
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+}
+
+nav ul li {
+  position: relative;
+}
+
+/* MAIN BUTTONS (kindlicher Look) */
+nav ul li > a {
+  display: block;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #6366f1, #22c55e);
+  color: white;
+  text-decoration: none;
+  border-radius: 14px;
+  font-weight: bold;
+  box-shadow: 0 6px 15px rgba(0,0,0,0.25);
+  transition: all 0.2s ease;
+}
+
+/* Hover Effekt */
+nav ul li > a:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.35);
+}
+
+/* DROPDOWN */
+.dropdown-content {
+  display: none;
+  position: absolute;
+  top: 110%;
+  left: 0;
+  min-width: 200px;
+  background: #111827;
+  border-radius: 14px;
+  padding: 10px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  z-index: 999;
+}
+
+/* Dropdown Items */
+.dropdown-content li a {
+  display: block;
+  padding: 12px 15px;
+  margin: 6px 0;
+  border-radius: 10px;
+  background: #1f2937;
+  color: white;
+  text-decoration: none;
+  transition: 0.2s;
+  white-space: nowrap; /* verhindert Wortumbruch */
+}
+
+/* Hover Dropdown Items */
+.dropdown-content li a:hover {
+  background: #374151;
+  transform: translateX(4px);
+}
+
+/* SHOW DROPDOWN */
+.dropdown:hover .dropdown-content {
+  display: block;
+}
+
+/* GLÜHBIRNE */
+.bulb {
+  position: absolute;
+  right: -40px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.bulb img {
+  width: 90px;
+  height: auto;
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 0 15px rgba(250,204,21,0.9));
+  transition: transform 0.2s;
+}
+
+.bulb img:hover {
+  transform: scale(1.1);
+}
+
+#welcomeText {
+  display: none;
+  position: absolute;
+  top: 90px;
+  right: 0;
+  background: white;
+  color: black;
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+/* SLIDER */
+.slider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-container img {
+  width: 700px;
+  height: 350px;
+  object-fit: cover;
+  border-radius: 15px;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.arrow {
+  font-size: 40px;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 20px;
+}
+
+/* MOBILE */
+@media(max-width: 768px){
+  nav ul {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .nav-container {
+    width: 95%;
+  }
+
+  .slide-container img {
+    width: 100%;
+  }
+
+  .bulb {
+    right: -10px;
+  }
+}
+</style>
+
+</head>
+
+<body>
+
+<header class="header">
+  <h1>Lichterlino</h1>
+</header>
+
+<div class="nav-container">
+
+<nav>
+<ul>
+  <li><a href="#">Startseite</a></li>
+
+  <li class="dropdown">
+    <a href="#">Infoseite</a>
+
+    <ul class="dropdown-content">
+      <li><a href="#">Unterwasser</a></li>
+      <li><a href="#">Weltall</a></li>
+      <li><a href="#">Dschungel</a></li>
+    </ul>
+  </li>
+
+  <li><a href="#">Impressum</a></li>
+</ul>
+</nav>
+
+<div class="bulb" onmouseover="showWelcome()" onmouseout="hideWelcome()">
+ <img src="Glühbirne_Begrüßung.png" width="1024" height="1536" alt=""/>
+  <span id="welcomeText">Herzlich willkommen!</span>
+</div>
+
+</div>
+
+<main>
+
+<div class="slider">
+  <button class="arrow" onclick="prevSlide()">❮</button>
+
+  <div class="slide-container">
+    <img id="slideImage" src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e">
+  </div>
+
+  <button class="arrow" onclick="nextSlide()">❯</button>
+</div>
+
+</main>
+
+<script>
+const images = [
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
+  "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa",
+  "https://images.unsplash.com/photo-1501785888041-af3ef285b470",
+  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee"
+];
+
+let current = 0;
+
+function showWelcome() {
+  document.getElementById("welcomeText").style.display = "block";
+}
+
+function hideWelcome() {
+  document.getElementById("welcomeText").style.display = "none";
+}
+
+function updateSlide() {
+  document.getElementById("slideImage").src = images[current];
+}
+
+function nextSlide() {
+  current = (current + 1) % images.length;
+  updateSlide();
+}
+
+function prevSlide() {
+  current = (current - 1 + images.length) % images.length;
+  updateSlide();
+}
+</script>
+
+</body>
+</html>
+
