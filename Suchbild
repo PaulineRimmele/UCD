@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Unterwasser Suchspiel - Finale Version</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: #00051a;
+    }
+    .container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      cursor: none;
+      background: url("Unterwasser.png.png") center/cover no-repeat;
+    }
+    .dark-overlay {
+      position: absolute;
+      inset: 0;
+      background: #001226; /* Dunkles Navy-Blau */
+      z-index: 10;
+      pointer-events: none;
+      
+      mask-image: radial-gradient(
+        circle 140px at var(--x, 50%) var(--y, 50%),
+        transparent 70%,
+        black 71%
+      );
+      -webkit-mask-image: radial-gradient(
+        circle 140px at var(--x, 50%) var(--y, 50%),
+        transparent 70%,
+        black 71%
+      );
+    }
+    .dark-overlay.off { opacity: 0; }
+      
+    .light-cone {
+      position: absolute;
+      width: 200px; 
+      height: 200px;
+      left: var(--x);
+      top: var(--y);
+      background: linear-gradient(to bottom, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.6) 100%);
+      clip-path: polygon(0% 0%, 100% 0%, 55% 100%, 45% 100%);
+      transform: translateX(-50%);
+      pointer-events: none;
+      z-index: 11;
+    }
+
+    .flashlight-spot {
+      position: absolute;
+      width: 250px; 
+      height: 250px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 80%);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      left: var(--x);
+      top: var(--y);
+      z-index: 1000;
+    }
+
+    .flashlight-tool {
+      position: absolute;
+      width: 100px; 
+      height: 150px;
+      background: url("Tschenlampe cartoon.png") center/contain no-repeat;
+      pointer-events: none;
+      z-index: 20;
+      left: var(--x);
+      top: calc(var(--y) + 200px); 
+      transform: translate(-50%, -15px);
+    }
+      
+    .logo-container {
+      position: absolute;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000; 
+      pointer-events: none;
+    }
+
+    .main-logo {
+      width: 300px;
+      height: auto;
+      filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.44));
+    }
+
+    .item {
+      position: absolute;
+      opacity: 0;
+      transition: opacity 0.2s;
+      cursor: pointer;
+      z-index: 15;
+    }
+
+    .item.found {
+      opacity: 0 !important;
+      pointer-events: none;
+    }
+
+    .nav-buttons-container {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      display: flex;
+      gap: 15px;
+      z-index: 1001; 
+    }
+
+    .home-link {
+      width: 110px;
+      height: 110px;
+      cursor: pointer !important;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+    .reset-button {
+      width: 120px;        
+      height: 120px;       
+      margin-top: -12px;     
+      margin-left: -40px;    
+      cursor: pointer !important;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .home-icon, .reset-icon {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 0 10px white);
+    }
+    .switch {
+      position: absolute;
+      bottom: 20px; right: 20px;
+      width: 60px; height: 100px;
+      background: #eee; border-radius: 10px;
+      display: none; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 100;
+    }
+
+    .toggle { width: 20px; height: 50px; background: #bbb; border-radius: 5px; transition: 0.2s; }
+    .switch.on .toggle { transform: translateY(-15px); background: #4CAF50; }
+
+    .score-wrapper {
+      position: absolute;
+      bottom: 30px; left: 50%;
+      transform: translateX(-50%);
+      padding: 10px; 
+      background: #fff893; 
+      border-radius: 20px; z-index: 100;
+      display: flex; gap: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    .field { width: 70px; height: 60px; background: #eee; border: 1px solid #aaa; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-weight: bold; overflow: hidden; transition: background 0.3s, box-shadow 0.3s;}
+    
+    .field.filled { 
+      background: #4CAF50; 
+      border-color: #2e7d32;
+      box-shadow: 0 0 15px #4CAF50, 0 0 5px #4CAF50; 
+    }
+    
+    .field img {
+      width: 90%;
+      height: 90%;
+      object-fit: contain; 
+      transition: filter 0.3s ease;
+    }
+
+    .field.filled img {
+      filter: drop-shadow(0 0 5px white);
+    }
+
+    .bulb-wrapper {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 1002;
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+      pointer-events: none;
+    }
+
+    .speech-bubble {
+      position: relative;
+      background: rgba(255, 255, 255, 0.95);
+      color: #333;
+      padding: 12px 16px;
+      border-radius: 15px;
+      font-size: 14px;
+      font-weight: bold;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      max-width: 220px;
+      line-height: 1.4;
+      margin-top: 10px;
+      pointer-events: auto;
+    }
+
+    .speech-bubble::after {
+      content: '';
+      position: absolute;
+      right: -10px;
+      top: 20px;
+      width: 0;
+      height: 0;
+      border-top: 8px solid transparent;
+      border-left: 10px solid rgba(255, 255, 255, 0.95);
+      border-bottom: 8px solid transparent;
+    }
+
+    .bulb-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: auto;
+    }
+
+    .bulb-container img {
+      width: 130px;
+      height: auto;
+      filter: drop-shadow(0 0 10px rgba(255, 248, 147, 0.5));
+    }
+
+    .off { opacity: 0 !important; }
+
+    #item-oktopus {
+      animation: OKTOPUS_ROUTE 26s linear infinite;
+    }
+
+    #item-fisch {
+      animation: FISCH_ROUTE 26s linear infinite;
+    }
+
+    #item-clownfisch {
+      animation: FISCH_ROUTE 30s linear infinite; 
+    }
+
+    #item-kugelfisch {
+      animation: OKTOPUS_ROUTE 28s linear infinite; 
+    }
+
+    #item-weißerhai {
+      animation: FISCH_ROUTE 25s linear infinite; 
+    }
+
+    #item-seepferdchen {
+      animation: OKTOPUS_ROUTE 30s linear infinite; 
+    }
+
+    @keyframes OKTOPUS_ROUTE {
+      0% {
+        left: -160px;
+        transform: scaleX(1);
+      }
+      49.99% {
+        left: 100vw;
+        transform: scaleX(1);
+      }
+      50% {
+        left: 100vw;
+        transform: scaleX(-1);
+      }
+      100% {
+        left: -160px;
+        transform: scaleX(-1);
+      }
+    }
+
+    @keyframes FISCH_ROUTE {
+      0% {
+        left: 100vw;
+        transform: scaleX(-1);
+      }
+      49.99% {
+        left: -160px;
+        transform: scaleX(-1);
+      }
+      50% {
+        left: -160px;
+        transform: scaleX(1);
+      }
+      100% {
+        left: 100vw;
+        transform: scaleX(1);
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container" id="game-container">
+  
+  <div class="logo-container">
+    <img src="Lichterlino_blau-gelb.png" alt="Logo" class="main-logo">
+  </div>
+
+  <div class="bulb-wrapper">
+    <div class="speech-bubble" id="welcomeText">
+      Viel Spaß beim Suchen! 
+    </div>
+    <div class="bulb-container">
+      <img src="Glühbirne_Begrüßung.png" alt="Glühbirne">
+    </div>
+  </div>
+
+  <div class="dark-overlay" id="overlay"></div>
+  <div class="light-cone" id="cone"></div>
+  <div class="flashlight-spot" id="spot"></div>
+  <div class="flashlight-tool" id="tool"></div>
+
+  <div class="nav-buttons-container">
+    <a href="index.html" class="home-link">
+      <img src="home weiß neu.png" alt="Home" width="120" height="200" class="home-icon">
+    </a>
+    <button class="reset-button" id="btn-reset" title="Spiel neu starten">
+      <img src="Pfeil.png" alt="Reset" class="reset-icon">
+    </button>
+  </div>
+
+ <img src="Stern.png" id="item-seestern" class="item" data-name="Seestern" alt="Seestern" style="top: 75%; left: 35%; width: 110px;">
+
+<img src="krake.png" id="item-oktopus" class="item" data-name="Oktopus" alt="Oktopus" style="top: 17%; width: 140px;">
+
+<img src="fisch.png" id="item-fisch" class="item" data-name="Fisch" alt="Fisch" style="top: 38%; width: 90px;">
+
+<img src="koralle.png" id="item-koralle" class="item" data-name="Koralle" alt="Koralle" style="top: 65%; left: 15%; width: 100px;">
+
+<img src="Clownfisch.png" id="item-clownfisch" class="item" data-name="Clownfisch" alt="Clownfisch" style="top: 45%; width: 100px;">
+
+<img src="Kugelfisch.png" id="item-kugelfisch" class="item" data-name="Kugelfisch" alt="Kugelfisch" style="top: 30%; width: 100px;">
+
+<img src="Weißerhai.png" id="item-weißerhai" class="item" data-name="Weißer Hai" alt="Weißer Hai" style="top: 60%; width: 190px;">
+
+<img src="Seepferdchen.png" id="item-seepferdchen" class="item" data-name="Seepferdchen" alt="Seepferdchen" style="top: 70%; width: 40px;">
+  <div class="switch" id="switch">
+    <div class="toggle"></div>
+  </div>fff893
+
+  <div class="score-wrapper">
+    <div class="field" id="field-seestern"><img src="Stern.png" alt="Suche Seestern"></div>
+    <div class="field" id="field-oktopus"><img src="krake.png" alt="Suche Oktopus"></div>
+    <div class="field" id="field-fisch"><img src="fisch.png" alt="Suche Fisch"></div>
+    <div class="field" id="field-koralle"><img src="koralle.png" alt="Suche Koralle"></div>
+    <div class="field" id="field-clownfisch"><img src="clownfisch.png" alt="Suche Clownfisch"></div>
+    <div class="field" id="field-kugelfisch"><img src="kugelfisch.png" alt="Suche Kugelfisch"></div>
+    <div class="field" id="field-weißerhai"><img src="weißerhai.png" alt="Suche Weißerhai"></div>
+    <div class="field" id="field-seepferdchen"><img src="seepferdchen.png" alt="Suche Seepferdchen"></div>
+  </div>
+
+</div>
+
+<script>
+  const container = document.getElementById("game-container");
+  const overlay = document.getElementById("overlay");
+  const spot = document.getElementById("spot");
+  const tool = document.getElementById("tool");
+  const cone = document.getElementById("cone");
+  const switchBtn = document.getElementById("switch");
+  const items = document.querySelectorAll(".item");
+  const welcomeText = document.getElementById("welcomeText"); 
+  const resetBtn = document.getElementById("btn-reset");
+
+  let mouseX = window.innerWidth / 2, mouseY = window.innerHeight / 2;
+  let currentX = mouseX, currentY = mouseY;
+  let isLightOn = false;
+  
+  let inactivityTimer;
+  let lightOnTimeout;
+
+  window.addEventListener("mousemove", (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+
+  function update() {
+    currentX += (mouseX - currentX) * 0.15;
+    currentY += (mouseY - currentY) * 0.15;
+
+    container.style.setProperty("--x", currentX + "px");
+    container.style.setProperty("--y", currentY + "px");
+
+    if (!isLightOn) {
+      items.forEach(item => {
+        if (item.classList.contains("found")) return;
+        const rect = item.getBoundingClientRect();
+        const dx = currentX - (rect.left + rect.width / 2);
+        const dy = currentY - (rect.top + rect.height / 2);
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        item.style.opacity = (distance < 140) ? 1 : 0;
+      });
+    }
+    requestAnimationFrame(update);
+  }
+  update();
+
+  function resetInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    const foundCount = document.querySelectorAll(".item.found").length;
+    if (isLightOn || foundCount === items.length) return;
+
+    switchBtn.style.display = "none";
+
+    inactivityTimer = setTimeout(() => {
+      switchBtn.style.display = "flex";
+      welcomeText.textContent = "Brauchst du Hilfe? Verwende den Lichtschalter unten rechts!";
+    }, 60000); 
+  }
+
+  resetInactivityTimer();
+
+  switchBtn.addEventListener("click", () => {
+    if (isLightOn) return;
+
+    isLightOn = true;
+    overlay.classList.add("off");
+    spot.classList.add("off");
+    tool.classList.add("off");
+    cone.classList.add("off");
+    switchBtn.classList.add("on");
+
+    container.style.cursor = "default";
+    welcomeText.textContent = "Schau dich gut um, solange das Licht brennt!";
+
+    items.forEach(item => {
+      item.style.opacity = 1;
+    });
+
+    lightOnTimeout = setTimeout(() => {
+      isLightOn = false;
+      overlay.classList.remove("off");
+      spot.classList.remove("off");
+      tool.classList.remove("off");
+      cone.classList.remove("off");
+      switchBtn.classList.remove("on");
+      switchBtn.style.display = "none";
+
+      container.style.cursor = "none";
+      welcomeText.textContent = "Viel Spaß beim Suchen!";
+
+      items.forEach(item => {
+        item.style.opacity = item.classList.contains("found") ? 0 : 0;
+      });
+
+      resetInactivityTimer();
+    }, 3000);
+  });
+
+  function triggerCelebration() {
+    const duration = 4 * 1000;
+    const end = Date.now() + duration;
+
+    (function frame() {
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0, y: 0.9 }
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1, y: 0.9 }
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    }());
+  }
+
+  items.forEach(item => {
+    item.addEventListener("click", () => {
+      if (!item.classList.contains("found")) {
+        const rect = item.getBoundingClientRect();
+        const dx = currentX - (rect.left + rect.width / 2);
+        const dy = currentY - (rect.top + rect.height / 2);
+        
+        if (isLightOn || Math.sqrt(dx * dx + dy * dy) < 140) {
+          item.classList.add("found");
+          
+          resetInactivityTimer();
+          
+          if (item.id === "item-seestern") {
+            document.getElementById("field-seestern").classList.add("filled");
+            welcomeText.textContent = "Du hast den Seestern gefunden! Er lebt am Meeresgrund und kann seine verlorene Arme nachwachsen lassen.";
+          } else if (item.id === "item-oktopus") {
+            document.getElementById("field-oktopus").classList.add("filled");
+            welcomeText.textContent = "Klasse! Ein Oktopus. Er hat drei Herzen und ist super schlau!";
+          } else if (item.id === "item-fisch") {
+            document.getElementById("field-fisch").classList.add("filled");
+            welcomeText.textContent = "Super! Du hast den Fisch entdeckt.";
+          } else if (item.id === "item-koralle") {
+            document.getElementById("field-koralle").classList.add("filled");
+            welcomeText.textContent = "Sehr gut! Du hast eine schöne Koralle gefunden. Korallen bieten vielen Meerestieren Schutz und Lebensraum";
+          } else if (item.id === "item-clownfisch") {
+            document.getElementById("field-clownfisch").classList.add("filled");
+            welcomeText.textContent = "Fantastisch du hast Nemo gefunden! Clownfische leben oft in Anemonen.";
+          } else if (item.id === "item-kugelfisch") {
+            document.getElementById("field-kugelfisch").classList.add("filled");
+            welcomeText.textContent = "Kugelfische blähen sich bei Gefahr auf.";
+          } else if (item.id === "item-weißerhai") {
+            document.getElementById("field-weißerhai").classList.add("filled");
+            welcomeText.textContent = "Der weiße Hai kann bis zu 70 Jahre alt werden.";
+          } else if (item.id === "item-seepferdchen") {
+            document.getElementById("field-seepferdchen").classList.add("filled");
+            welcomeText.textContent = "Wusstest du, dass die Seepferdchen Männchen die Babys tragen?";
+          }
+
+          const foundCount = document.querySelectorAll(".item.found").length;
+          if (foundCount === items.length) {
+            clearTimeout(inactivityTimer);
+            switchBtn.style.display = "none";
+            welcomeText.textContent = "🎉 Unglaublich, du hast alle Schätze des Meeres entdeckt! Gewonnen! 🎉";
+            setTimeout(triggerCelebration, 300);
+          }
+        }
+      }
+    });
+  });
+  resetBtn.addEventListener("click", () => {
+    clearTimeout(lightOnTimeout);
+    isLightOn = false;
+
+    overlay.classList.remove("off");
+    spot.classList.remove("off");
+    tool.classList.remove("off");
+    cone.classList.remove("off");
+    switchBtn.classList.remove("on");
+    switchBtn.style.display = "none";
+    container.style.cursor = "none";
+
+    welcomeText.textContent = "Viel Spaß beim Suchen!";
+
+    items.forEach(item => {
+      item.classList.remove("found");
+      item.style.opacity = 0;
+    });
+
+    document.querySelectorAll(".field").forEach(field => {
+      field.classList.remove("filled");
+    });
+
+    resetInactivityTimer();
+  });
+</script>
+
+</body>
+</html>
